@@ -7,16 +7,16 @@ from tensorflow.python.ops.rnn import bidirectional_dynamic_rnn
 
 
 def highway_layer(inputs, use_bias=True, bias_init=0.0, keep_prob=1.0, is_train=False, scope=None):
-    with tf.variable_scope(scope or "highway_layer"):
+    with tf.compat.v1.variable_scope(scope or "highway_layer"):
         hidden = inputs.get_shape().as_list()[-1]
-        with tf.variable_scope("trans"):
-            trans = tf.layers.dropout(inputs, rate=1.0 - keep_prob, training=is_train)
-            trans = tf.layers.dense(trans, units=hidden, use_bias=use_bias, bias_initializer=tf.constant_initializer(
+        with tf.compat.v1.variable_scope("trans"):
+            trans = tf.compat.v1.layers.dropout(inputs, rate=1.0 - keep_prob, training=is_train)
+            trans = tf.compat.v1.layers.dense(trans, units=hidden, use_bias=use_bias, bias_initializer=tf.constant_initializer(
                 bias_init), activation=None)
             trans = tf.nn.relu(trans)
-        with tf.variable_scope("gate"):
-            gate = tf.layers.dropout(inputs, rate=1.0 - keep_prob, training=is_train)
-            gate = tf.layers.dense(gate, units=hidden, use_bias=use_bias, bias_initializer=tf.constant_initializer(
+        with tf.compat.v1.variable_scope("gate"):
+            gate = tf.compat.v1.layers.dropout(inputs, rate=1.0 - keep_prob, training=is_train)
+            gate = tf.compat.v1.layers.dense(gate, units=hidden, use_bias=use_bias, bias_initializer=tf.constant_initializer(
                 bias_init), activation=None)
             gate = tf.nn.sigmoid(gate)
         outputs = gate * trans + (1 - gate) * inputs
@@ -24,7 +24,7 @@ def highway_layer(inputs, use_bias=True, bias_init=0.0, keep_prob=1.0, is_train=
 
 
 def highway_network(inputs, highway_layers=2, use_bias=True, bias_init=0.0, keep_prob=1.0, is_train=False, scope=None):
-    with tf.variable_scope(scope or "highway_network"):
+    with tf.compat.v1.variable_scope(scope or "highway_network"):
         prev = inputs
         cur = None
         for idx in range(highway_layers):
@@ -41,7 +41,7 @@ class BiRNN:
 
     def __call__(self, inputs, seq_len, use_last_state=False, time_major=False):
         assert not time_major, "BiRNN class cannot support time_major currently"
-        with tf.variable_scope(self.scope):
+        with tf.compat.v1.variable_scope(self.scope):
             flat_inputs = flatten(inputs, keep=2)  # reshape to [-1, max_time, dim]
             seq_len = flatten(seq_len, keep=0)  # reshape to [x] (one dimension sequence)
             outputs, ((_, h_fw), (_, h_bw)) = bidirectional_dynamic_rnn(self.cell_fw, self.cell_bw, flat_inputs,
@@ -71,7 +71,7 @@ class DenselyConnectedBiRNN:
     def __call__(self, inputs, seq_len, time_major=False):
         assert not time_major, "DenseConnectBiRNN class cannot support time_major currently"
         # this function does not support return_last_state method currently
-        with tf.variable_scope(self.scope):
+        with tf.compat.v1.variable_scope(self.scope):
             flat_inputs = flatten(inputs, keep=2)  # reshape to [-1, max_time, dim]
             seq_len = flatten(seq_len, keep=0)  # reshape to [x] (one dimension sequence)
             cur_inputs = flat_inputs
@@ -111,16 +111,16 @@ class AttentionCell(RNNCell):  # time_major based
     def __call__(self, inputs, state, scope=None):
         c, m = state
         # (max_time, batch_size, att_unit)
-        ha = tf.nn.tanh(tf.add(self.pmemory, tf.layers.dense(m, self.mem_units, use_bias=False, name="wah")))
-        alphas = tf.squeeze(tf.exp(tf.layers.dense(ha, units=1, use_bias=False, name='way')), axis=[-1])
-        alphas = tf.div(alphas, tf.reduce_sum(alphas, axis=0, keepdims=True))  # (max_time, batch_size)
+        ha = tf.nn.tanh(tf.add(self.pmemory, tf.compat.v1.layers.dense(m, self.mem_units, use_bias=False, name="wah")))
+        alphas = tf.squeeze(tf.exp(tf.compat.v1.layers.dense(ha, units=1, use_bias=False, name='way')), axis=[-1])
+        alphas = tf.divide(alphas, tf.reduce_sum(alphas, axis=0, keepdims=True))  # (max_time, batch_size)
         # (batch_size, att_units)
         w_context = tf.reduce_sum(tf.multiply(self.memory, tf.expand_dims(alphas, axis=-1)), axis=0)
         h, new_state = self._cell(inputs, state)
-        lfc = tf.layers.dense(w_context, self.num_units, use_bias=False, name='wfc')
+        lfc = tf.compat.v1.layers.dense(w_context, self.num_units, use_bias=False, name='wfc')
         # (batch_size, num_units)
-        fw = tf.sigmoid(tf.layers.dense(lfc, self.num_units, use_bias=False, name='wff') +
-                        tf.layers.dense(h, self.num_units, name='wfh'))
+        fw = tf.sigmoid(tf.compat.v1.layers.dense(lfc, self.num_units, use_bias=False, name='wff') +
+                        tf.compat.v1.layers.dense(h, self.num_units, name='wfh'))
         hft = tf.multiply(lfc, fw) + h  # (batch_size, num_units)
         return hft, new_state
 

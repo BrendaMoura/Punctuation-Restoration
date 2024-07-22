@@ -1,15 +1,17 @@
 import codecs
 import numpy as np
 import os
-import tensorflow as tf
 
 from evaluation.general_performance import compute_score
 from models.base_model import BaseModel
 from models.nns import AttentionCell, highway_network, DenselyConnectedBiRNN
-from tensorflow.contrib.crf import crf_log_likelihood
+from tensorflow_addons.text import crf_log_likelihood
 from tensorflow.python.ops.rnn import dynamic_rnn
 from utils.data_utils import END, UNK, SPACE, PUNCTUATION_MAPPING, EOS_TOKENS, PADDING_TOKEN
 from utils.logger import Progbar
+
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 
 class PunctuationRestorationModel(BaseModel):
@@ -17,15 +19,15 @@ class PunctuationRestorationModel(BaseModel):
         super(PunctuationRestorationModel, self).__init__(config)
 
     def _add_placeholders(self):
-        self.words = tf.placeholder(tf.int32, shape=[None, None], name="words")  # shape = (batch_size, max_time)
-        self.tags = tf.placeholder(tf.int32, shape=[None, None], name="tags")  # shape = (batch_size, max_time - 1)
-        self.seq_len = tf.placeholder(tf.int32, shape=[None], name="seq_len")
+        self.words = tf.compat.v1.placeholder(tf.int32, shape=[None, None], name="words")  # shape = (batch_size, max_time)
+        self.tags = tf.compat.v1.placeholder(tf.int32, shape=[None, None], name="tags")  # shape = (batch_size, max_time - 1)
+        self.seq_len = tf.compat.v1.placeholder(tf.int32, shape=[None], name="seq_len")
         # hyper-parameters
-        self.batch_size = tf.placeholder(tf.int32, name="batch_size")
-        self.is_train = tf.placeholder(tf.bool, shape=[], name="is_train")
-        self.keep_prob = tf.placeholder(tf.float32, name="keep_prob")
-        self.drop_rate = tf.placeholder(tf.float32, name="dropout_rate")
-        self.lr = tf.placeholder(tf.float32, name="learning_rate")
+        self.batch_size = tf.compat.v1.placeholder(tf.int32, name="batch_size")
+        self.is_train = tf.compat.v1.placeholder(tf.bool, shape=[], name="is_train")
+        self.keep_prob = tf.compat.v1.placeholder(tf.float32, name="keep_prob")
+        self.drop_rate = tf.compat.v1.placeholder(tf.float32, name="dropout_rate")
+        self.lr = tf.compat.v1.placeholder(tf.float32, name="learning_rate")
 
     def _get_feed_dict(self, batch, keep_prob=1.0, is_train=False, lr=None):
         feed_dict = {self.words: batch["words"], self.seq_len: batch["seq_len"], self.batch_size: batch["batch_size"]}

@@ -257,3 +257,77 @@ def process_data(config):
     write_json(config["dev_set"], dev_set)
     write_json(config["ref_set"], ref_set)
     write_json(config["asr_set"], asr_set)
+
+def process_data(config):
+    """
+    Import and preprocess raw datasets. Then export processed datasets, vocabularies, word counter, punctuation counter
+    for downstream jobs or exploratory data analysis.
+    Args:
+        config: a dictionary contains parameters for datasets.
+    Returns: None.
+    """
+    train_file = os.path.join(config["raw_path"], "train.txt")
+    dev_file = os.path.join(config["raw_path"], "dev.txt")
+    ref_file = os.path.join(config["raw_path"], "ref.txt")
+    asr_file = os.path.join(config["raw_path"], "asr.txt")
+    iwslt_file = os.path.join(config["raw_path"], "iwslt.txt")
+
+    if not os.path.exists(config["save_path"]):
+        os.makedirs(config["save_path"])
+
+    # build vocabulary
+    train_word_vocab = build_vocab_list([train_file], config["min_word_count"], config["max_vocab_size"])
+    train_word_counter = get_word_counter(train_word_vocab)
+    train_word_vocab = list(train_word_counter.keys())
+
+    dev_word_vocab = build_vocab_list([dev_file], config["min_word_count"], config["max_vocab_size"])
+    dev_word_counter = get_word_counter(dev_word_vocab)
+
+    ref_word_vocab = build_vocab_list([ref_file], config["min_word_count"], config["max_vocab_size"])
+    ref_word_counter = get_word_counter(ref_word_vocab)
+
+    asr_word_vocab = build_vocab_list([asr_file], config["min_word_count"], config["max_vocab_size"])
+    asr_word_counter = get_word_counter(asr_word_vocab)
+
+    iwslt_word_vocab = build_vocab_list([iwslt_file], config["min_word_count"], config["max_vocab_size"])
+    iwslt_word_counter = get_word_counter(iwslt_word_vocab)
+
+    if not config["use_pretrained"]:
+        word_dict = build_vocabulary(train_word_vocab)
+    else:
+        glove_path = config["glove_path"].format(config["glove_name"], config["emb_dim"])
+        glove_vocab = load_glove_vocab(glove_path, config["glove_name"])
+        glove_vocab = glove_vocab & {word.lower() for word in glove_vocab}
+        filtered_train_word_vocab = [word for word in train_word_vocab if word in glove_vocab]
+        word_dict = build_vocabulary(filtered_train_word_vocab)
+        tmp_word_dict = word_dict.copy()
+        del tmp_word_dict[UNK], tmp_word_dict[NUM], tmp_word_dict[END]
+        vectors = filter_glove_emb(tmp_word_dict, glove_path, config["glove_name"], config["emb_dim"])
+        np.savez_compressed(config["pretrained_emb"], embeddings=vectors)
+
+    # create indices dataset
+    punct_dict = dict([(punct, idx) for idx, punct in enumerate(PUNCTUATION_VOCABULARY)])
+    train_set, train_punct_counter = build_dataset([train_file], word_dict, punct_dict, config["max_sequence_len"])
+    dev_set, dev_punct_counter = build_dataset([dev_file], word_dict, punct_dict, config["max_sequence_len"])
+    ref_set, ref_punct_counter = build_dataset([ref_file], word_dict, punct_dict, config["max_sequence_len"])
+    asr_set, asr_punct_counter = build_dataset([asr_file], word_dict, punct_dict, config["max_sequence_len"])
+    iwslt_set, iwslt_punct_counter = build_dataset([iwslt_file], word_dict, punct_dict, config["max_sequence_len"])
+    vocab = {"word_dict": word_dict, "tag_dict": punct_dict}
+
+    # write to file
+    write_json(config["vocab"], vocab)
+    write_json(config["train_word_counter"], train_word_counter)
+    write_json(config["dev_word_counter"], dev_word_counter)
+    write_json(config["ref_word_counter"], ref_word_counter)
+    write_json(config["asr_word_counter"], asr_word_counter)
+    write_json(config["iwslt_word_counter"], iwslt_word_counter)
+    write_json(config["train_punct_counter"], train_punct_counter)
+    write_json(config["dev_punct_counter"], dev_punct_counter)
+    write_json(config["ref_punct_counter"], ref_punct_counter)
+    write_json(config["asr_punct_counter"], asr_punct_counter)
+    write_json(config["iwslt_punct_counter"], iwslt_punct_counter)
+    write_json(config["train_set"], train_set)
+    write_json(config["dev_set"], dev_set)
+    write_json(config["ref_set"], ref_set)
+    write_json(config["asr_set"], asr_set)
+    write_json(config["iwslt_set"], iwslt_set)

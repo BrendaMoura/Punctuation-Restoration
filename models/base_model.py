@@ -1,9 +1,10 @@
 import numpy as np
 import os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 from abc import abstractmethod, ABC
-from tensorflow.contrib.crf import viterbi_decode, crf_log_likelihood
+from tensorflow_addons.text import viterbi_decode, crf_log_likelihood
 from utils.io import load_dataset
 from utils.logger import get_logger
 
@@ -97,20 +98,20 @@ class BaseModel(ABC):
         pass
 
     def _build_train_op(self):
-        with tf.variable_scope("train_step"):
+        with tf.compat.v1.variable_scope("train_step"):
             if self.cfg["optimizer"] == 'adagrad':
-                optimizer = tf.train.AdagradOptimizer(learning_rate=self.lr)
+                optimizer = tf.compat.v1.train.AdagradOptimizer(learning_rate=self.lr)
             elif self.cfg["optimizer"] == 'sgd':
-                optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
+                optimizer = tf.compat.v1.train.radientDescentOptimizer(learning_rate=self.lr)
             elif self.cfg["optimizer"] == 'rmsprop':
-                optimizer = tf.train.RMSPropOptimizer(learning_rate=self.lr)
+                optimizer = tf.compat.v1.train.RMSPropOptimizer(learning_rate=self.lr)
             elif self.cfg["optimizer"] == 'adadelta':
-                optimizer = tf.train.AdadeltaOptimizer(learning_rate=self.lr)
+                optimizer = tf.compat.v1.train.AdadeltaOptimizer(learning_rate=self.lr)
             else:  # default adam optimizer
                 if self.cfg["optimizer"] != 'adam':
                     print('Unsupported optimizing method {}. Using default adam optimizer.'
                           .format(self.cfg["optimizer"]))
-                optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+                optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr)
 
         if self.cfg["grad_clip"] is not None and self.cfg["grad_clip"] > 0:
             grads, vs = zip(*optimizer.compute_gradients(self.loss))
